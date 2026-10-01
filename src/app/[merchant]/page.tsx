@@ -1,0 +1,35 @@
+import type { CSSProperties } from "react";
+import { notFound } from "next/navigation";
+import Image from "next/image";
+import Link from "next/link";
+import { ArrowDown, ArrowRight, ArrowUpRight, BadgePercent, Sparkles } from "lucide-react";
+import { connectDB } from "@/lib/db";
+import { Merchant, Product } from "@/models";
+import { ProductCard, SectionHeading } from "@/components/storefront";
+import { getMerchantTheme } from "@/lib/merchant-themes";
+
+export const dynamic="force-dynamic";
+export default async function MerchantPage({params}:{params:Promise<{merchant:string}>}){
+ const {merchant:slug}=await params;await connectDB();const merchant=await Merchant.findOne({slug,active:true}).lean();if(!merchant)notFound();
+ const [products,banners]=await Promise.all([
+  Product.find({merchant:merchant._id,status:"published"}).populate("merchant","name slug primaryColor").populate({path:"category",select:"name slug parent",populate:{path:"parent",select:"name slug parent"}}).sort({featured:-1,displayOrder:1,createdAt:-1}).limit(60).lean(),
+  (await import("@/models")).Banner.find({active:true,merchant:merchant._id,$or:[{startsAt:null},{startsAt:{$lte:new Date()}}]}).sort({displayOrder:1}).limit(1).lean(),
+ ]);
+ const theme=getMerchantTheme(slug,merchant.primaryColor);const categoryMap=new Map<string,any>();
+ for(const product of products){const category=product.category as any;if(category?._id){const key=String(category._id);const parent=category.parent as any;let root=parent;let prefix=parent?.slug?`${parent.slug}/`:"";while(root?.parent){root=root.parent;prefix=`${root.slug}/${prefix}`}categoryMap.set(key,{...category,parentName:root?.name||"",parentSlug:prefix.replace(/\/$/,"")})}}
+ const categories=[...categoryMap.values()].slice(0,10);const featured=products.filter((product:any)=>product.featured);const deals=products.filter((product:any)=>product.deal);const data=JSON.parse(JSON.stringify({merchant,products,featured,deals,categories,banner:banners[0]||null}));
+ const palette={"--merchant-accent":theme.accent,"--merchant-strong":theme.accentStrong,"--merchant-ink":theme.ink,"--merchant-canvas":theme.canvas,"--merchant-soft":theme.soft,"--merchant-line":theme.line} as CSSProperties;
+ const heroImage=data.banner?.image||data.merchant.banner||"https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&w=1800&q=85";
+ const imageAlt=`${theme.label} from ${data.merchant.name}`;
+ return <div className={`merchant-store merchant-store-${theme.key} merchant-motif-${theme.motif}`} style={palette}>
+  <section className="merchant-masthead"><div className="site-width merchant-masthead-inner"><div className="merchant-identity"><span className="merchant-monogram">{data.merchant.name.slice(0,1)}</span><span><small>AN INDEPENDENT SHOPPING EDIT</small><b>{data.merchant.name}<i> / </i> finds</b></span></div><div className="merchant-masthead-note"><Sparkles size={14}/><span>Shop direct with {data.merchant.name}</span></div></div></section>
+  <section className="site-width merchant-hero-wrap"><div className="merchant-hero"><div className="merchant-hero-copy"><span className="merchant-eyebrow"><span/> {theme.label.toUpperCase()}</span><h1>{theme.headline}</h1><p>{data.merchant.description||theme.description}</p><div className="merchant-hero-actions"><Link href="#merchant-collection" className="merchant-action-primary">Explore this edit <ArrowRight size={16}/></Link><Link href="#merchant-categories" className="merchant-action-text">Browse categories <ArrowDown size={15}/></Link></div><span className="merchant-small-trust">{data.products.length} finds · Always retailer-direct</span></div><div className="merchant-hero-image"><Image src={heroImage} alt={imageAlt} fill unoptimized sizes="(max-width: 1024px) 100vw, 55vw" className="object-cover"/><span className="merchant-hero-overlay"/><span className="merchant-hero-tag">{theme.label.toUpperCase()} <ArrowUpRight size={14}/></span><span className="merchant-decorative-mark">{data.merchant.name.slice(0,1)}</span></div></div></section>
+  {categories.length>0&&<section id="merchant-categories" className="site-width merchant-category-section"><div className="merchant-section-head"><div><span className="merchant-eyebrow">SHOP BY WHAT YOU LOVE</span><h2>Browse the <em>edit.</em></h2></div><span className="merchant-category-count">{String(categories.length).padStart(2,"0")} collections</span></div><div className="merchant-category-rail">{categories.map((category:any,index:number)=><Link key={category._id} href={`/${slug}/${category.parentSlug?`${category.parentSlug}/`:""}${category.slug}`} className="merchant-category-chip"><span className="merchant-category-index">{String(index+1).padStart(2,"0")}</span><span><small>{category.parentName||theme.label}</small><b>{category.name}</b></span><ArrowUpRight size={15}/></Link>)}</div></section>}
+  <main id="merchant-collection" className="site-width merchant-content">
+    {data.featured.length>0&&<section className="merchant-featured"><div className="merchant-section-head"><div><span className="merchant-eyebrow">THE CURATOR’S SHORTLIST</span><h2>Worth a <em>closer look.</em></h2></div><span className="merchant-handnote">Just a few favourites ✳</span></div><div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">{data.featured.slice(0,4).map((product:any)=><ProductCard key={product._id} product={product}/>)}</div></section>}
+   {data.deals.length>0&&<section className="merchant-deal-ribbon"><div><span><BadgePercent size={15}/> A GOOD LITTLE DEAL</span><h2>Lovely finds, <em>lighter prices.</em></h2></div><Link href="#merchant-deals">Find a deal <ArrowRight size={15}/></Link></section>}
+    <section className="merchant-all-products"><div className="merchant-section-head"><div><span className="merchant-eyebrow">THE WHOLE COLLECTION</span><h2>{data.merchant.name} <em>finds.</em></h2><p>{data.products.length} good things to browse, all in one spot.</p></div><span className="merchant-results-mark">{String(data.products.length).padStart(2,"0")} / FINDS</span></div><div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">{data.products.map((product:any)=><ProductCard key={product._id} product={product}/>)}</div>{!data.products.length&&<div className="merchant-empty"><Sparkles size={24}/><b>The next good find is on its way.</b><span>We’re building this retailer’s edit. Check back soon.</span></div>}</section>
+   {data.deals.length>0&&<section id="merchant-deals" className="merchant-deals"><SectionHeading eyebrow={`${data.merchant.name} · PRICE DROPS`} title="A little something for less." subtitle="Offers can change; check the retailer for today's price."/><div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">{data.deals.slice(0,8).map((product:any)=><ProductCard key={product._id} product={product}/>)}</div></section>}
+  </main><div className="merchant-disclosure site-width"><Sparkles size={15}/><span>{data.merchant.name} and all its marks belong to their respective owners. We are an independent discovery guide and are not endorsed by this retailer.</span></div>
+ </div>;
+}

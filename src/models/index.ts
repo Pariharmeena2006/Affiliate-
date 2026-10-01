@@ -1,0 +1,31 @@
+import { Schema, models, model } from "mongoose";
+
+const options = { timestamps: true, strict: true };
+const MerchantSchema = new Schema({ name: { type: String, required: true }, slug: { type: String, required: true, unique: true, index: true }, logo: String, banner: String, description: String, websiteUrl: String, affiliateBaseUrl: String, primaryColor: String, active: { type: Boolean, default: true }, displayOrder: { type: Number, default: 0 }, seoTitle: String, seoDescription: String }, options);
+const CategorySchema = new Schema({ name: { type: String, required: true }, slug: { type: String, required: true, index: true }, parent: { type: Schema.Types.ObjectId, ref: "Category", default: null, index: true }, image: String, banner: String, description: String, active: { type: Boolean, default: true }, displayOrder: { type: Number, default: 0 }, seoTitle: String, seoDescription: String, seoKeywords: [String] }, options);
+CategorySchema.index({ slug: 1, parent: 1 }, { unique: true });
+const ProductSchema = new Schema({ name: { type: String, required: true }, slug: { type: String, required: true, unique: true, index: true }, sku: String, merchant: { type: Schema.Types.ObjectId, ref: "Merchant", required: true, index: true }, category: { type: Schema.Types.ObjectId, ref: "Category", index: true }, brand: String, shortDescription: String, description: String, images: [String], originalUrl: String, affiliateUrl: { type: String, required: true }, originalPrice: Number, salePrice: Number, currency: { type: String, default: "INR" }, rating: Number, reviewCount: Number, availability: String, colors: [String], sizes: [String], tags: [String], highlights: [String], specifications: [{ label: String, value: String }], featured: Boolean, trending: Boolean, bestSeller: Boolean, newArrival: Boolean, deal: Boolean, editorsPick: Boolean, recommended: Boolean, status: { type: String, enum: ["published", "draft", "archived"], default: "draft", index: true }, displayOrder: { type: Number, default: 0 }, seoTitle: String, seoDescription: String, canonicalUrl: String, clickCount: { type: Number, default: 0 } }, options);
+ProductSchema.index({ name: "text", brand: "text", tags: "text", shortDescription: "text" });
+ProductSchema.index({ featured: 1, trending: 1, deal: 1, createdAt: -1 });
+const BannerSchema = new Schema({ image: String, mobileImage: String, title: String, subtitle: String, buttonText: String, buttonUrl: String, merchant: { type: Schema.Types.ObjectId, ref: "Merchant" }, category: { type: Schema.Types.ObjectId, ref: "Category" }, startsAt: Date, endsAt: Date, active: { type: Boolean, default: true }, displayOrder: Number }, options);
+const PageSchema = new Schema({ title: String, slug: { type: String, unique: true, index: true }, content: String, seoTitle: String, seoDescription: String, published: { type: Boolean, default: false } }, options);
+const HomepageSectionSchema = new Schema({ type: { type: String, required: true }, title: String, subtitle: String, productIds: [{ type: Schema.Types.ObjectId, ref: "Product" }], categoryIds: [{ type: Schema.Types.ObjectId, ref: "Category" }], images: [String], buttonText: String, buttonUrl: String, background: String, visible: { type: Boolean, default: true }, displayOrder: Number }, options);
+const ClickEventSchema = new Schema({ product: { type: Schema.Types.ObjectId, ref: "Product", index: true }, merchant: { type: Schema.Types.ObjectId, ref: "Merchant", index: true }, category: { type: Schema.Types.ObjectId, ref: "Category", index: true }, timestamp: { type: Date, default: Date.now, index: true }, referrer: String, device: String, country: String, userAgent: String, visitorHash: String }, { timestamps: false });
+const ThemeSettingsSchema = new Schema({ key: { type: String, default: "global", unique: true }, primaryColor: String, secondaryColor: String, accentColor: String, backgroundColor: String, cardColor: String, textColor: String, headerColor: String, footerColor: String, buttonColor: String, buttonTextColor: String, borderRadius: String, fontFamily: String, logo: String, favicon: String, preset: String, darkMode: Boolean }, options);
+const SiteSettingsSchema = new Schema({ key: { type: String, default: "global", unique: true }, siteTitle: String, description: String, keywords: [String], ogImage: String, announcement: String, logo: String, logoWidth: Number, searchPlaceholder: String, showSearch: Boolean, aboutText: String, copyright: String, socialLinks: Schema.Types.Mixed, navigationItems: [Schema.Types.Mixed], footerLinks: [Schema.Types.Mixed] }, options);
+const AdminUserSchema = new Schema({ username: { type: String, required: true, unique: true }, email: { type: String, required: true, unique: true }, passwordHash: { type: String, required: true }, role: { type: String, default: "admin" }, active: { type: Boolean, default: true } }, options);
+const BrandSchema = new Schema({ name: { type: String, required: true, unique: true }, slug: String, logo: String, active: { type: Boolean, default: true } }, options);
+const TagSchema = new Schema({ name: { type: String, required: true, unique: true }, slug: String }, options);
+
+export const Merchant = models.Merchant || model("Merchant", MerchantSchema);
+export const Category = models.Category || model("Category", CategorySchema);
+export const Product = models.Product || model("Product", ProductSchema);
+export const Banner = models.Banner || model("Banner", BannerSchema);
+export const Page = models.Page || model("Page", PageSchema);
+export const HomepageSection = models.HomepageSection || model("HomepageSection", HomepageSectionSchema);
+export const ClickEvent = models.ClickEvent || model("ClickEvent", ClickEventSchema);
+export const ThemeSettings = models.ThemeSettings || model("ThemeSettings", ThemeSettingsSchema);
+export const SiteSettings = models.SiteSettings || model("SiteSettings", SiteSettingsSchema);
+export const AdminUser = models.AdminUser || model("AdminUser", AdminUserSchema);
+export const Brand = models.Brand || model("Brand", BrandSchema);
+export const Tag = models.Tag || model("Tag", TagSchema);

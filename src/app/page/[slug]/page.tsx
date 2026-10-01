@@ -1,0 +1,3 @@
+import { notFound } from "next/navigation";import { connectDB } from "@/lib/db";import { Page } from "@/models";
+export const dynamic="force-dynamic";
+export default async function SitePage({params}:{params:Promise<{slug:string}>}){await connectDB();const {slug}=await params;const page=await Page.findOne({slug,published:true}).lean();if(!page)notFound();return <article className="site-width max-w-3xl py-12"><p className="text-[10px] font-bold uppercase tracking-[.2em] text-[#b15c3c]">Found & Fine</p><h1 className="mt-2 font-display text-4xl font-semibold text-[#263c31]">{page.title}</h1><div className="mt-7 whitespace-pre-wrap rounded-2xl border border-stone-200 bg-white p-6 text-sm leading-7 text-stone-600">{page.content}</div></article>}
